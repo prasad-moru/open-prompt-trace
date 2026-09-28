@@ -4,6 +4,7 @@ import { Layers, GitCompareArrows } from 'lucide-react'
 import type { PromptProfileState } from '../hooks/usePromptProfile'
 import { TokenVisualization } from './TokenVisualization'
 import { PrunedDiff } from './PrunedDiff'
+import { TokenizerSkeleton } from './TokenizerSkeleton'
 
 export function ProfilerPanel({ state }: { state: PromptProfileState }) {
   const [tab, setTab] = useState(0)
@@ -32,7 +33,7 @@ export function ProfilerPanel({ state }: { state: PromptProfileState }) {
       <div role="tabpanel" id={`analysis-panel-${tab}`} aria-labelledby={`analysis-tab-${tab}`} tabIndex={0} className="analysis-content">
         {tab === 0 ? <TokenVisualization state={state} /> : state.profile
           ? <PrunedDiff key={state.profile.rawText} profile={state.profile} />
-          : <p className={state.error ? 'error panel-status' : 'panel-status'} role={state.error ? 'alert' : 'status'}>{state.error ?? (state.status === 'initializing' ? 'Initializing WASM…' : 'Profiling…')}</p>}
+          : <div className="panel-status"><p className={state.error ? 'error' : undefined} role={state.error ? 'alert' : 'status'}>{state.error ?? (state.status === 'initializing' ? 'Initializing WASM…' : 'Profiling…')}</p>{state.status === 'initializing' && <TokenizerSkeleton />}</div>}
       </div>
     </section>
   )

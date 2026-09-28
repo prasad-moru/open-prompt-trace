@@ -16,7 +16,9 @@ before(async () => {
       resolveId(id) { if (id.endsWith('.wasm?url')) return '\0local-wasm' },
       load(id) { if (id === '\0local-wasm') return 'export default "local-test.wasm"' },
     }],
-    build: { write: false, minify: false, lib: { entry: 'tests/test-entry.ts', formats: ['es'] } },
+    // Inline imports only in the data-URL test harness. Production uses lazy chunks.
+    build: { write: false, minify: false, lib: { entry: 'tests/test-entry.ts', formats: ['es'] },
+      rolldownOptions: { output: { codeSplitting: false } } },
   })
   const bundle = Array.isArray(buildResult) ? buildResult[0] : buildResult
   const chunk = bundle.output.find((item) => item.type === 'chunk' && item.isEntry)

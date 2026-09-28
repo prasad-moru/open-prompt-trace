@@ -1,5 +1,6 @@
 import type { PromptProfileState } from '../hooks/usePromptProfile'
 import { getHeatmapPieces } from './heatmap'
+import { TokenizerSkeleton } from './TokenizerSkeleton'
 
 export function TokenVisualization({ state }: { state: PromptProfileState }) {
   const { status, profile, tokenization, error } = state
@@ -11,6 +12,7 @@ export function TokenVisualization({ state }: { state: PromptProfileState }) {
       </div>
       {error ? <p className="error" role="alert">{error}</p> : (
         <div className="token-view" aria-label="Prompt token boundaries">
+          {status === 'initializing' && <TokenizerSkeleton />}
           {tokenization && (tokenization.tokens.length ? Array.from(tokenization.tokens, (id, index) => {
             const piece = tokenization.decodedPieces[index]
             const { startIndex, endIndex } = tokenization.offsets[index]

@@ -1,8 +1,10 @@
-﻿import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { Zap } from 'lucide-react'
 import { PromptEditor } from './components/PromptEditor'
 import { ProfilerPanel } from './components/ProfilerPanel'
 import { ScaleMetrics } from './components/ScaleMetrics'
 import { ProfileDiagnostics } from './components/ProfileDiagnostics'
+import { CIWaitlistModal } from './components/CIWaitlistModal'
 import { usePromptProfile } from './hooks/usePromptProfile'
 import './App.css'
 
@@ -29,6 +31,8 @@ const example = [
 
 function App() {
   const [prompt, setPrompt] = useState(example)
+  const [waitlistOpen, setWaitlistOpen] = useState(false)
+  const closeWaitlist = useCallback(() => setWaitlistOpen(false), [])
   const editor = useRef<HTMLTextAreaElement>(null)
   const state = usePromptProfile(prompt)
   const selectRange = (start: number, end: number) => {
@@ -39,7 +43,10 @@ function App() {
     <main className="app-shell">
       <header className="app-header">
         <a className="brand" href="./"><span className="brand-mark" aria-hidden="true">[ ]</span> Open Prompt Trace</a>
-        <span className="privacy"><span aria-hidden="true" /> Runs in your browser</span>
+        <div className="header-actions">
+          <span className="privacy"><span aria-hidden="true" /> Runs in your browser</span>
+          <button className="ci-header-button" type="button" onClick={() => setWaitlistOpen(true)} aria-haspopup="dialog"><Zap size={15} aria-hidden="true" />Add to GitHub Actions (CI)</button>
+        </div>
       </header>
       <section className="intro">
         <p className="eyebrow">THE BUILDING BLOCKS OF LANGUAGE</p>
@@ -55,6 +62,7 @@ function App() {
       <p className="help" id="profile-limits">Profiling limits: 50,000 UTF-16 code units, 5,000 tokens, and 200 findings. Your input is never truncated.</p>
       {state.profile && <ProfileDiagnostics profile={state.profile} onSelectRange={selectRange} />}
       <footer className="page-footer">Local tokenization · Powered by tiktoken + WebAssembly · Your prompt stays on this device</footer>
+      {waitlistOpen && <CIWaitlistModal onClose={closeWaitlist} />}
     </main>
   )
 }

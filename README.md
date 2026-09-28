@@ -1,6 +1,6 @@
 ﻿# OpenPromptTrace
 
-A React + TypeScript + Vite prompt profiler. Tokenization and heuristic analysis run locally through `@dqbd/tiktoken` WebAssembly. The application fetches only its bundled assets; prompts are never sent to a service. No credentials, telemetry, backend, or persistent storage are required. Once loaded, profiling works without a connection. Offline reload is not provided by a service worker.
+A React + TypeScript + Vite prompt profiler. Tokenization and heuristic analysis run locally through `@dqbd/tiktoken` WebAssembly. The application fetches only its bundled assets; prompts are never sent to a service. No credentials, telemetry, or backend are required. Profiling does not persist prompt text. Once loaded, profiling works without a connection. Offline reload is not provided by a service worker.
 
 ## Development
 
@@ -17,6 +17,7 @@ On PowerShell systems that disable script shims, use `npm.cmd`.
 ## Architecture
 
 - `src/core/tokenizer/engine.ts`: app-lifetime WASM initialization, owned encoder allocation, exact streaming UTF-8 decoding, UTF-16 token ranges, and count-only tokenization.
+- `src/core/tokenizer/runtime.ts`: vocabulary, WASM glue, and the binary URL, dynamically imported only when initialization is requested.
 - `src/core/tokenizer/ownership.ts`: shared ownership leases with microtask-deferred release to tolerate React StrictMode effect replay.
 - `src/core/profiler/linter.ts`: deterministic diagnostics, bounded analysis, non-overlapping replacement preview, and full-context savings calculations.
 - `src/hooks/TokenizerProvider.tsx`: application-level owner. Final unmount releases the encoder; subsequent initialization reuses the same WASM module.
@@ -46,4 +47,12 @@ Diagnostic IDs are deterministic. All ranges are UTF-16 offsets with exclusive e
 
 `npx vitest run` (or `npm test`) tests the actual Vite-bundled engine with local WASM bytes. Tests cover failed initialization/retry, concurrent initialization, cleanup races, ownership replay, reinitialization, exact Unicode reconstruction and offsets, heuristic categories, overlapping edits, bounded input, the compatibility API, exact diff reconstruction, heatmap ranges, and all four pricing formulas. The warm 5,000-token benchmark depends on hardware and is not a browser latency guarantee.
 
-Vite is configured with `vite-plugin-wasm` and `vite-plugin-top-level-await`, targeting modern evergreen browsers. The engine retains its explicit asynchronous `.wasm?url` loader, which works even if a host supplies a generic binary MIME type. Rollup and esbuild are explicit development dependencies because the top-level-await plugin expects them but Vite 8 no longer supplies them transitively. The bundled vocabulary is large enough to produce Vite's chunk-size advisory.
+Vite uses `build.rollupOptions.output.manualChunks` to isolate the tokenizer runtime and `@dqbd/tiktoken` in `vendor-tokenizer`. The WASM binary is emitted separately with the same prefix. React and the UI stay in the primary entry. The warning threshold is 2500 kB. Importing the engine does not load the vocabulary; the provider requests initialization after mounting, with a reduced-motion-aware loading shimmer visible until ready.
+
+The WASM plugin is enabled. Production targets modern evergreen browsers with native top-level await; the legacy top-level-await plugin runs only in development because its transform fails on Vite 8's split dynamic imports. The engine retains its explicit asynchronous `.wasm?url` loader, which works even if a host supplies a generic binary MIME type. Rollup and esbuild remain explicit development dependencies required by that plugin.
+
+## CI early-access preview
+
+The header's **Add to GitHub Actions (CI)** button opens a native dark-mode dialog with required email validation, keyboard dismissal, focus restoration, and local error feedback. Successful submissions are saved in `localStorage` under `opt_ci_waitlist` as an array of `{ email, createdAt }` records. Duplicate emails are ignored. This is a local-only milestone: no email is sent and no remote waitlist registration occurs. The confirmation appears only after local capture succeeds. Storage restrictions or malformed stored data are surfaced without claiming success.
+
+Additional regression checks cover the dynamic production chunk boundary, React placement, absence of build warnings, and waitlist persistence/failure behavior.

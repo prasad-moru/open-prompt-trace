@@ -1,6 +1,6 @@
-import { init, Tiktoken } from '@dqbd/tiktoken/lite/init'
-import model from '@dqbd/tiktoken/encoders/cl100k_base.json'
-import wasmUrl from '@dqbd/tiktoken/lite/tiktoken_bg.wasm?url'
+import type { Tiktoken } from '@dqbd/tiktoken/lite/init'
+
+type TokenizerRuntime = typeof import('./runtime')
 
 export interface TokenOffset {
   startIndex: number
@@ -15,18 +15,17 @@ export interface RawTokenization {
   charCount: number
 }
 
-let wasmPromise: Promise<void> | undefined
+let wasmPromise: Promise<TokenizerRuntime> | undefined
 let initializationPromise: Promise<void> | undefined
 let encoder: Tiktoken | undefined
 let generation = 0
 
-function initializeWasm(): Promise<void> {
+function initializeWasm(): Promise<TokenizerRuntime> {
   if (!wasmPromise) {
-    const request = init(async (imports) => {
-      // The WASM and vocabulary are bundled local assets, never remote services.
-      const response = await fetch(wasmUrl)
-      if (!response.ok) throw new Error(`WASM load failed (${response.status}).`)
-      return WebAssembly.instantiate(await response.arrayBuffer(), imports)
+    // Importing the public engine does not load vocabulary, WASM glue, or bytes.
+    const request = import('./runtime').then(async (runtime) => {
+      await runtime.initializeWasm()
+      return runtime
     })
     wasmPromise = request
     void request.catch(() => {
@@ -41,11 +40,11 @@ export function initTokenizer(): Promise<void> {
   if (initializationPromise) return initializationPromise
   if (encoder) return Promise.resolve()
   const requestedGeneration = generation
-  const request = initializeWasm().then(() => {
+  const request = initializeWasm().then((runtime) => {
     if (requestedGeneration !== generation) {
       throw new Error('Tokenizer initialization was cancelled by cleanup.')
     }
-    encoder = new Tiktoken(model.bpe_ranks, model.special_tokens, model.pat_str)
+    encoder = runtime.createEncoder()
   })
   initializationPromise = request
   const clearPending = () => {
